@@ -14,6 +14,14 @@ export async function POST(request: Request) {
     return Response.json({ success: false, error: { code: "VALIDATION_ERROR", message: "Введите email и пароль" } }, { status: 422 });
   }
 
+  // Fallback admin login via environment variables (for deployments without a working database)
+  const adminEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
+  const adminPassword = process.env.ADMIN_PASSWORD;
+  if (adminEmail && adminPassword && email === adminEmail && password === adminPassword) {
+    const fallbackUser = { id: "admin-fallback", email: adminEmail, name: "Администратор", role: "ADMIN" };
+    return Response.json({ success: true, data: { token: generateToken({ userId: fallbackUser.id, role: fallbackUser.role }), user: fallbackUser } });
+  }
+
   try {
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user || !user.isActive || !(await verifyPassword(password, user.passwordHash))) {
