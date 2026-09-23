@@ -1,0 +1,583 @@
+// ============================================================================
+// CRM SYSTEM — DATABASE SCHEMA (Prisma ORM) — SQLite Test Version
+// ============================================================================
+// For local testing without Docker/PostgreSQL
+// Production: use schema.postgresql.prisma
+// ============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// ENUMS
+// ============================================================================
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  SALES_MANAGER
+  SALES_REP
+  CLIENT
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  DELETED
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  UNQUALIFIED
+  CONVERTED
+  LOST
+}
+
+enum LeadSource {
+  WEBSITE
+  REFERRAL
+  COLD_CALL
+  EMAIL
+  SOCIAL_MEDIA
+  ADVERTISING
+  EVENT
+  PARTNER
+  OTHER
+}
+
+enum DealStatus {
+  OPEN
+  WON
+  LOST
+  ABANDONED
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+  CANCELLED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TaskType {
+  CALL
+  EMAIL
+  MEETING
+  TODO
+  FOLLOW_UP
+}
+
+enum ActivityType {
+  CALL
+  EMAIL
+  MEETING
+  NOTE
+  STATUS_CHANGE
+  DEAL_CREATED
+  DEAL_UPDATED
+  DEAL_WON
+  DEAL_LOST
+  FILE_UPLOADED
+}
+
+enum NotificationType {
+  TASK_ASSIGNED
+  TASK_DUE
+  LEAD_ASSIGNED
+  DEAL_STAGE_CHANGED
+  MENTION
+  SYSTEM
+}
+
+// ============================================================================
+// AUTH & USERS
+// ============================================================================
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  firstName String
+  lastName  String
+  phone     String?
+  avatar    String?
+  role      UserRole @default(SALES_REP)
+  status    UserStatus @default(ACTIVE)
+
+  lastLoginAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  ownedLeads        Lead[]        @relation("LeadOwner")
+  ownedDeals        Deal[]        @relation("DealOwner")
+  assignedTasks     Task[]        @relation("TaskAssignee")
+  createdTasks      Task[]        @relation("TaskCreator")
+  activities        Activity[]
+  notifications     Notification[]
+  teamMemberships   TeamMember[]
+  sentEmails        Email[]       @relation("EmailSender")
+  uploadedFiles     File[]        @relation("FileUploader")
+  auditLogs         AuditLog[]
+
+  @@index([email])
+  @@index([role])
+  @@index([status])
+  @@map("users")
+}
+
+model Team {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  members     TeamMember[]
+
+  @@map("teams")
+}
+
+model TeamMember {
+  id        String   @id @default(cuid())
+  userId    String
+  teamId    String
+  role      String   @default("member")
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, teamId])
+  @@index([userId])
+  @@index([teamId])
+  @@map("team_members")
+}
+
+// ============================================================================
+// LEADS
+// ============================================================================
+
+model Lead {
+  id          String     @id @default(cuid())
+
+  firstName   String
+  lastName    String
+  email       String?
+  phone       String?
+  company     String?
+  jobTitle    String?
+  website     String?
+
+  status      LeadStatus @default(NEW)
+  source      LeadSource @default(OTHER)
+  score       Int        @default(0)
+
+  ownerId     String?
+  owner       User?      @relation("LeadOwner", fields: [ownerId], references: [id])
+
+  convertedToContactId String?   @unique
+  convertedToContact   Contact?  @relation("LeadConversion", fields: [convertedToContactId], references: [id])
+  convertedAt          DateTime?
+
+  notes       String?
+  metadata    String?
+
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  tasks       Task[]
+  activities  Activity[]
+
+  @@index([email])
+  @@index([phone])
+  @@index([status])
+  @@index([ownerId])
+  @@index([source])
+  @@index([createdAt])
+  @@map("leads")
+}
+
+// ============================================================================
+// CONTACTS & COMPANIES
+// ============================================================================
+
+model Company {
+  id          String   @id @default(cuid())
+
+  name        String
+  website     String?
+  industry    String?
+  size        String?
+  revenue     Float?
+
+  street      String?
+  city        String?
+  state       String?
+  country     String?
+  postalCode  String?
+
+  phone       String?
+  description String?
+  metadata    String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  contacts    Contact[]
+  deals       Deal[]
+
+  @@index([name])
+  @@map("companies")
+}
+
+model Contact {
+  id          String   @id @default(cuid())
+
+  firstName   String
+  lastName    String
+  email       String?
+  phone       String?
+  mobile      String?
+  jobTitle    String?
+
+  companyId   String?
+  company     Company? @relation(fields: [companyId], references: [id])
+
+  street      String?
+  city        String?
+  state       String?
+  country     String?
+  postalCode  String?
+
+  linkedinUrl String?
+  twitterUrl  String?
+
+  notes       String?
+  metadata    String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  leadConverted Lead?    @relation("LeadConversion")
+  deals         DealContact[]
+  tasks         Task[]
+  activities    Activity[]
+
+  @@index([email])
+  @@index([phone])
+  @@index([companyId])
+  @@index([lastName])
+  @@map("contacts")
+}
+
+// ============================================================================
+// DEALS & PIPELINE
+// ============================================================================
+
+model Pipeline {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  isDefault   Boolean  @default(false)
+  isActive    Boolean  @default(true)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  stages      PipelineStage[]
+  deals       Deal[]
+
+  @@map("pipelines")
+}
+
+model PipelineStage {
+  id          String   @id @default(cuid())
+  name        String
+  probability Int      @default(0)
+  order       Int
+
+  pipelineId  String
+  pipeline    Pipeline @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  deals       Deal[]
+
+  @@index([pipelineId])
+  @@index([order])
+  @@map("pipeline_stages")
+}
+
+model Deal {
+  id          String     @id @default(cuid())
+
+  title       String
+  description String?
+  amount      Float      @default(0)
+  currency    String     @default("USD")
+
+  status      DealStatus @default(OPEN)
+  stageId     String
+  stage       PipelineStage @relation(fields: [stageId], references: [id])
+
+  pipelineId  String
+  pipeline    Pipeline   @relation(fields: [pipelineId], references: [id])
+
+  ownerId     String
+  owner       User       @relation("DealOwner", fields: [ownerId], references: [id])
+
+  companyId   String?
+  company     Company?   @relation(fields: [companyId], references: [id])
+
+  expectedCloseDate DateTime?
+  actualCloseDate   DateTime?
+
+  lossReason  String?
+
+  probability Int        @default(0)
+  metadata    String?
+
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  contacts    DealContact[]
+  tasks       Task[]
+  activities  Activity[]
+  files       File[]
+
+  @@index([status])
+  @@index([stageId])
+  @@index([ownerId])
+  @@index([companyId])
+  @@index([expectedCloseDate])
+  @@index([createdAt])
+  @@map("deals")
+}
+
+model DealContact {
+  id        String   @id @default(cuid())
+  dealId    String
+  contactId String
+  role      String?
+  isPrimary Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  deal      Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  contact   Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@unique([dealId, contactId])
+  @@index([dealId])
+  @@index([contactId])
+  @@map("deal_contacts")
+}
+
+// ============================================================================
+// TASKS & ACTIVITIES
+// ============================================================================
+
+model Task {
+  id          String       @id @default(cuid())
+
+  title       String
+  description String?
+  type        TaskType     @default(TODO)
+  status      TaskStatus   @default(TODO)
+  priority    TaskPriority @default(MEDIUM)
+
+  assigneeId  String?
+  assignee    User?        @relation("TaskAssignee", fields: [assigneeId], references: [id])
+
+  createdById String
+  createdBy   User         @relation("TaskCreator", fields: [createdById], references: [id])
+
+  leadId      String?
+  lead        Lead?        @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  dealId      String?
+  deal        Deal?        @relation(fields: [dealId], references: [id], onDelete: Cascade)
+
+  contactId   String?
+  contact     Contact?     @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  dueDate     DateTime?
+  completedAt DateTime?
+
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([assigneeId])
+  @@index([status])
+  @@index([priority])
+  @@index([dueDate])
+  @@index([leadId])
+  @@index([dealId])
+  @@index([contactId])
+  @@map("tasks")
+}
+
+model Activity {
+  id          String       @id @default(cuid())
+
+  type        ActivityType
+  title       String
+  description String?
+  metadata    String?
+
+  userId      String
+  user        User         @relation(fields: [userId], references: [id])
+
+  leadId      String?
+  lead        Lead?        @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  dealId      String?
+  deal        Deal?        @relation(fields: [dealId], references: [id], onDelete: Cascade)
+
+  contactId   String?
+  contact     Contact?     @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime     @default(now())
+
+  @@index([userId])
+  @@index([type])
+  @@index([leadId])
+  @@index([dealId])
+  @@index([contactId])
+  @@index([createdAt])
+  @@map("activities")
+}
+
+// ============================================================================
+// FILES & DOCUMENTS
+// ============================================================================
+
+model File {
+  id          String   @id @default(cuid())
+
+  filename    String
+  originalName String
+  mimeType    String
+  size        Int
+  url         String
+
+  dealId      String?
+  deal        Deal?    @relation(fields: [dealId], references: [id], onDelete: Cascade)
+
+  uploadedById String
+  uploadedBy   User    @relation("FileUploader", fields: [uploadedById], references: [id])
+
+  createdAt   DateTime @default(now())
+
+  @@index([dealId])
+  @@map("files")
+}
+
+// ============================================================================
+// NOTIFICATIONS
+// ============================================================================
+
+model Notification {
+  id          String           @id @default(cuid())
+
+  type        NotificationType
+  title       String
+  message     String
+  isRead      Boolean          @default(false)
+
+  userId      String
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  linkUrl     String?
+
+  metadata    String?
+
+  createdAt   DateTime         @default(now())
+  readAt      DateTime?
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+// ============================================================================
+// EMAIL TRACKING
+// ============================================================================
+
+model Email {
+  id          String   @id @default(cuid())
+
+  subject     String
+  body        String
+  fromEmail   String
+  toEmail     String
+  ccEmails    String?
+  bccEmails   String?
+
+  status      String   @default("sent")
+
+  openedAt    DateTime?
+  clickedAt   DateTime?
+
+  senderId    String
+  sender      User     @relation("EmailSender", fields: [senderId], references: [id])
+
+  metadata    String?
+
+  sentAt      DateTime @default(now())
+
+  @@index([senderId])
+  @@index([status])
+  @@map("emails")
+}
+
+// ============================================================================
+// AUDIT LOGS
+// ============================================================================
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  action      String
+  resource    String
+  resourceId  String?
+  changes     String?
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([resource])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ============================================================================
+// SYSTEM SETTINGS
+// ============================================================================
+
+model Setting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt
+
+  @@map("settings")
+}

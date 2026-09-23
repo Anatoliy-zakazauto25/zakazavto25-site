@@ -1,0 +1,430 @@
+{
+    "project":  "ЗаказАвто25 - Архитектурная модернизация",
+    "version":  "1.0.0",
+    "date":  "2026-08-27",
+    "description":  "Трансформация структуры сайта под эталон autozakaz.ru - 9 ключевых блоков",
+    "gap_analysis":  {
+                         "existing_components":  [
+                                                     "Header (логотип + навигация + CTA)",
+                                                     "Hero (заголовок + вкладки стран + статистика)",
+                                                     "Advantages (5 карточек)",
+                                                     "Order steps (5 шагов)",
+                                                     "Catalog (27 автомобилей)",
+                                                     "Cases (2 примера)",
+                                                     "Reviews (3 отзыва)",
+                                                     "Lead form",
+                                                     "Footer (упрощённый)"
+                                                 ],
+                         "missing_components":  [
+                                                    "Topbar с адресом офиса",
+                                                    "Social proof блок в Hero",
+                                                    "Founder card с фото директора",
+                                                    "Extended work steps (9 шагов вместо 5)",
+                                                    "FAQ Accordion (5 вопросов)",
+                                                    "Managers grid (25+ менеджеров по странам)",
+                                                    "Trust block (внешние отзывы + режим работы)",
+                                                    "Enhanced footer (соцсети + политика)"
+                                                ]
+                     },
+    "architecture":  {
+                         "page_structure":  [
+                                                "1. Topbar (адрес + 2ГИС)",
+                                                "2. Header (лого + навигация + CTA)",
+                                                "3. Hero (заголовок + вкладки + статистика + соцсети)",
+                                                "4. Advantages (3 карточки + карточка основателя)",
+                                                "5. Work Steps (9 этапов + CTA)",
+                                                "6. FAQ Accordion (5 вопросов + CTA)",
+                                                "7. Reviews/Cases (существующий блок)",
+                                                "8. Managers Grid (4 категории по странам)",
+                                                "9. Trust Block (внешние отзывы + режим работы)",
+                                                "10. Lead Form (существующий)",
+                                                "11. Footer (обновлённый)"
+                                            ],
+                         "new_components":  [
+                                                {
+                                                    "name":  "SiteTopbar",
+                                                    "path":  "src/components/layout/site-topbar.tsx",
+                                                    "props":  "none",
+                                                    "description":  "Тонкая полоса над header с адресом офиса и ссылкой на 2ГИС"
+                                                },
+                                                {
+                                                    "name":  "SocialProof",
+                                                    "path":  "src/components/features/social-proof.tsx",
+                                                    "props":  "{ links: SocialLink[] }",
+                                                    "description":  "Блок социальных сетей с количеством подписчиков"
+                                                },
+                                                {
+                                                    "name":  "FounderCard",
+                                                    "path":  "src/components/features/founder-card.tsx",
+                                                    "props":  "{ founder: Founder }",
+                                                    "description":  "Карточка основателя с фото, именем и должностью"
+                                                },
+                                                {
+                                                    "name":  "WorkSteps",
+                                                    "path":  "src/components/features/work-steps.tsx",
+                                                    "props":  "{ steps: WorkStep[], showCTA?: boolean }",
+                                                    "description":  "9 этапов работы с опциональной CTA кнопкой"
+                                                },
+                                                {
+                                                    "name":  "FAQAccordion",
+                                                    "path":  "src/components/features/faq-accordion.tsx",
+                                                    "props":  "{ items: FAQItem[], showCTA?: boolean }",
+                                                    "description":  "Интерактивный аккордеон с 5 вопросами и ответами"
+                                                },
+                                                {
+                                                    "name":  "ManagersGrid",
+                                                    "path":  "src/components/features/managers-grid.tsx",
+                                                    "props":  "{ categories: ManagerCategory[], showCTA?: boolean }",
+                                                    "description":  "Сетка менеджеров, сегментированных по странам (🇯🇵🇰🇷🇨🇳🏍️)"
+                                                },
+                                                {
+                                                    "name":  "TrustBlock",
+                                                    "path":  "src/components/features/trust-block.tsx",
+                                                    "props":  "{ reviews: ExternalReview[], officeHours: OfficeHours }",
+                                                    "description":  "Блок доверия с внешними отзывами и режимом работы"
+                                                }
+                                            ]
+                     },
+    "typescript_interfaces":  {
+                                  "path":  "src/types/components.ts",
+                                  "interfaces":  [
+                                                     {
+                                                         "name":  "SocialLink",
+                                                         "fields":  {
+                                                                        "platform":  "\u0027youtube\u0027 | \u0027telegram\u0027 | \u0027vk\u0027 | \u0027max\u0027",
+                                                                        "url":  "string",
+                                                                        "followers":  "string"
+                                                                    }
+                                                     },
+                                                     {
+                                                         "name":  "Founder",
+                                                         "fields":  {
+                                                                        "name":  "string",
+                                                                        "title":  "string",
+                                                                        "photo":  "string",
+                                                                        "description":  "string (optional)"
+                                                                    }
+                                                     },
+                                                     {
+                                                         "name":  "WorkStep",
+                                                         "fields":  {
+                                                                        "number":  "string",
+                                                                        "title":  "string",
+                                                                        "description":  "string"
+                                                                    }
+                                                     },
+                                                     {
+                                                         "name":  "FAQItem",
+                                                         "fields":  {
+                                                                        "question":  "string",
+                                                                        "answer":  "string | string[]"
+                                                                    }
+                                                     },
+                                                     {
+                                                         "name":  "Manager",
+                                                         "fields":  {
+                                                                        "name":  "string",
+                                                                        "phone":  "string",
+                                                                        "messengerUrl":  "string"
+                                                                    }
+                                                     },
+                                                     {
+                                                         "name":  "ManagerCategory",
+                                                         "fields":  {
+                                                                        "emoji":  "string",
+                                                                        "title":  "string",
+                                                                        "managers":  "Manager[]"
+                                                                    }
+                                                     },
+                                                     {
+                                                         "name":  "ExternalReview",
+                                                         "fields":  {
+                                                                        "platform":  "\u00272gis\u0027 | \u0027yandex\u0027 | \u0027vlru\u0027 | \u0027google\u0027",
+                                                                        "url":  "string",
+                                                                        "label":  "string"
+                                                                    }
+                                                     },
+                                                     {
+                                                         "name":  "OfficeHours",
+                                                         "fields":  {
+                                                                        "weekdays":  "string",
+                                                                        "saturday":  "string (optional)",
+                                                                        "pickupHours":  "string"
+                                                                    }
+                                                     }
+                                                 ]
+                              },
+    "mock_data":  {
+                      "path":  "src/lib/mock-data.ts",
+                      "exports":  [
+                                      {
+                                          "name":  "socialLinks",
+                                          "type":  "SocialLink[]",
+                                          "count":  4,
+                                          "platforms":  [
+                                                            "YouTube",
+                                                            "Telegram",
+                                                            "VK",
+                                                            "Max"
+                                                        ]
+                                      },
+                                      {
+                                          "name":  "founder",
+                                          "type":  "Founder",
+                                          "data":  {
+                                                       "name":  "Понамарев Анатолий Андреевич",
+                                                       "title":  "Директор компании",
+                                                       "photo":  "/images/founder.jpg"
+                                                   }
+                                      },
+                                      {
+                                          "name":  "workSteps",
+                                          "type":  "WorkStep[]",
+                                          "count":  9,
+                                          "steps":  [
+                                                        "Заключение договора",
+                                                        "Предоплата",
+                                                        "Подбираем автомобиль",
+                                                        "Покупка авто",
+                                                        "Оплата",
+                                                        "Оформление документов",
+                                                        "Таможенное оформление",
+                                                        "Последний блок платежей",
+                                                        "Доставка"
+                                                    ]
+                                      },
+                                      {
+                                          "name":  "faqItems",
+                                          "type":  "FAQItem[]",
+                                          "count":  5,
+                                          "questions":  [
+                                                            "Как заказать автомобиль?",
+                                                            "Какие гарантии?",
+                                                            "Оплачивать авто нужно заранее?",
+                                                            "Доставите ли в мой город?",
+                                                            "Есть ли офис в моем городе?"
+                                                        ]
+                                      },
+                                      {
+                                          "name":  "managerCategories",
+                                          "type":  "ManagerCategory[]",
+                                          "count":  4,
+                                          "categories":  [
+                                                             "🇯🇵 Менеджеры по Японии (3 чел)",
+                                                             "🇰🇷 Менеджеры по Корее (2 чел)",
+                                                             "🇨🇳 Менеджеры по Китаю (3 чел)",
+                                                             "🏍️ Менеджеры по мотоциклам (2 чел)"
+                                                         ]
+                                      },
+                                      {
+                                          "name":  "externalReviews",
+                                          "type":  "ExternalReview[]",
+                                          "count":  4,
+                                          "platforms":  [
+                                                            "2ГИС",
+                                                            "Яндекс",
+                                                            "VL.RU",
+                                                            "Google"
+                                                        ]
+                                      },
+                                      {
+                                          "name":  "officeHours",
+                                          "type":  "OfficeHours",
+                                          "data":  {
+                                                       "weekdays":  "Понедельник - Пятница, 10:00 - 19:00",
+                                                       "saturday":  "Суббота, 10:00 - 14:00",
+                                                       "pickupHours":  "Отдел выдачи: 11:00 - 18:00 (Пн-Пт), 10:00 - 14:00 (Сб)"
+                                                   }
+                                      }
+                                  ]
+                  },
+    "implementation_phases":  {
+                                  "phase_1_preparation":  {
+                                                              "title":  "Подготовка данных и типов",
+                                                              "prompts":  [
+                                                                              {
+                                                                                  "id":  1,
+                                                                                  "file":  "docs/prompts/01-typescript-interfaces.md",
+                                                                                  "task":  "Создать TypeScript интерфейсы",
+                                                                                  "target":  "src/types/components.ts"
+                                                                              },
+                                                                              {
+                                                                                  "id":  2,
+                                                                                  "file":  "docs/prompts/02-mock-data.md",
+                                                                                  "task":  "Дополнить mock-данные",
+                                                                                  "target":  "src/lib/mock-data.ts"
+                                                                              }
+                                                                          ]
+                                                          },
+                                  "phase_2_components":  {
+                                                             "title":  "Создание новых компонентов",
+                                                             "prompts":  [
+                                                                             {
+                                                                                 "id":  3,
+                                                                                 "file":  "docs/prompts/03-topbar.md",
+                                                                                 "task":  "Создать Topbar компонент",
+                                                                                 "target":  "src/components/layout/site-topbar.tsx"
+                                                                             },
+                                                                             {
+                                                                                 "id":  4,
+                                                                                 "file":  "docs/prompts/04-social-proof.md",
+                                                                                 "task":  "Создать SocialProof компонент",
+                                                                                 "target":  "src/components/features/social-proof.tsx"
+                                                                             },
+                                                                             {
+                                                                                 "id":  5,
+                                                                                 "file":  "docs/prompts/05-founder-card.md",
+                                                                                 "task":  "Создать FounderCard компонент",
+                                                                                 "target":  "src/components/features/founder-card.tsx"
+                                                                             },
+                                                                             {
+                                                                                 "id":  6,
+                                                                                 "file":  "docs/prompts/06-work-steps.md",
+                                                                                 "task":  "Обновить WorkSteps (9 шагов)",
+                                                                                 "target":  "src/components/features/work-steps.tsx"
+                                                                             },
+                                                                             {
+                                                                                 "id":  7,
+                                                                                 "file":  "docs/prompts/07-faq-accordion.md",
+                                                                                 "task":  "Создать FAQAccordion компонент",
+                                                                                 "target":  "src/components/features/faq-accordion.tsx"
+                                                                             },
+                                                                             {
+                                                                                 "id":  8,
+                                                                                 "file":  "docs/prompts/08-managers-grid.md",
+                                                                                 "task":  "Создать ManagersGrid компонент",
+                                                                                 "target":  "src/components/features/managers-grid.tsx"
+                                                                             },
+                                                                             {
+                                                                                 "id":  9,
+                                                                                 "file":  "docs/prompts/09-trust-block.md",
+                                                                                 "task":  "Создать TrustBlock компонент",
+                                                                                 "target":  "src/components/features/trust-block.tsx"
+                                                                             }
+                                                                         ]
+                                                         },
+                                  "phase_3_integration":  {
+                                                              "title":  "Обновление главной страницы",
+                                                              "prompts":  [
+                                                                              {
+                                                                                  "id":  10,
+                                                                                  "file":  "docs/prompts/10-homepage-integration.md",
+                                                                                  "task":  "Интегрировать все компоненты в главную страницу",
+                                                                                  "target":  "src/app/page.tsx"
+                                                                              }
+                                                                          ]
+                                                          },
+                                  "phase_4_layout":  {
+                                                         "title":  "Обновление Layout и навигации",
+                                                         "prompts":  [
+                                                                         {
+                                                                             "id":  11,
+                                                                             "file":  "docs/prompts/11-layout-update.md",
+                                                                             "task":  "Обновить Root Layout",
+                                                                             "target":  "src/app/layout.tsx"
+                                                                         },
+                                                                         {
+                                                                             "id":  12,
+                                                                             "file":  "docs/prompts/12-header-navigation.md",
+                                                                             "task":  "Добавить якорные ссылки в Header",
+                                                                             "target":  "src/components/layout/site-header.tsx"
+                                                                         },
+                                                                         {
+                                                                             "id":  13,
+                                                                             "file":  "docs/prompts/13-footer-update.md",
+                                                                             "task":  "Обновить Footer (соцсети + политика)",
+                                                                             "target":  "src/components/layout/site-footer.tsx"
+                                                                         }
+                                                                     ]
+                                                     },
+                                  "phase_5_styles":  {
+                                                         "title":  "Добавление стилей",
+                                                         "prompts":  [
+                                                                         {
+                                                                             "id":  14,
+                                                                             "file":  "docs/prompts/14-css-additions.md",
+                                                                             "task":  "Добавить CSS для новых компонентов",
+                                                                             "target":  "src/app/globals.css"
+                                                                         }
+                                                                     ]
+                                                     },
+                                  "phase_6_finalization":  {
+                                                               "title":  "Финализация и тестирование",
+                                                               "prompts":  [
+                                                                               {
+                                                                                   "id":  15,
+                                                                                   "file":  "docs/prompts/15-privacy-page.md",
+                                                                                   "task":  "Создать страницу Privacy Policy",
+                                                                                   "target":  "src/app/privacy/page.tsx"
+                                                                               },
+                                                                               {
+                                                                                   "id":  16,
+                                                                                   "file":  "docs/prompts/16-testing-checklist.md",
+                                                                                   "task":  "Финальная проверка и тестирование",
+                                                                                   "target":  "全体システム"
+                                                                               }
+                                                                           ]
+                                                           }
+                              },
+    "file_structure":  {
+                           "new_files":  [
+                                             "src/types/components.ts",
+                                             "src/components/layout/site-topbar.tsx",
+                                             "src/components/features/social-proof.tsx",
+                                             "src/components/features/founder-card.tsx",
+                                             "src/components/features/work-steps.tsx",
+                                             "src/components/features/faq-accordion.tsx",
+                                             "src/components/features/managers-grid.tsx",
+                                             "src/components/features/trust-block.tsx",
+                                             "src/app/privacy/page.tsx"
+                                         ],
+                           "modified_files":  [
+                                                  "src/lib/mock-data.ts",
+                                                  "src/app/page.tsx",
+                                                  "src/app/layout.tsx",
+                                                  "src/components/layout/site-header.tsx",
+                                                  "src/components/layout/site-footer.tsx",
+                                                  "src/app/globals.css"
+                                              ]
+                       },
+    "tech_stack":  {
+                       "framework":  "Next.js 16.3.2",
+                       "language":  "TypeScript",
+                       "styling":  "Tailwind CSS 4",
+                       "runtime":  "React 19",
+                       "database":  "PostgreSQL + Prisma 7.9.1 (не подключено)",
+                       "deployment":  "Docker ready"
+                   },
+    "design_principles":  {
+                              "theme":  "Тёмная тема с градиентами",
+                              "accent_color":  "#d71920 (красный)",
+                              "typography":  "Inter, Sora, IBM Plex Sans",
+                              "layout":  "Asymmetric split, glassmorphism, hover effects",
+                              "mobile_first":  "360px-430px tested",
+                              "animations":  "fadeInUp, hover lift, smooth scroll"
+                          },
+    "contacts":  {
+                     "director":  "Понамарев Анатолий Андреевич",
+                     "phone":  "+7 924 131 04 10",
+                     "telegram":  "https://t.me/zakazauto25",
+                     "2gis":  "https://go.2gis.com/kdBPo",
+                     "address":  "г. Владивосток, 13-я Рабочая, 12с3",
+                     "inn":  "2536352819",
+                     "kpp":  "253601001",
+                     "ogrn":  "1252500026789"
+                 },
+    "blocked_features":  [
+                             "Автоимпорт данных из аукционов",
+                             "Публичный калькулятор стоимости",
+                             "Онлайн-оплата",
+                             "CRM система",
+                             "Реферальная программа"
+                         ],
+    "notes":  {
+                  "reference_site":  "https://autozakaz.ru/",
+                  "execution_order":  "Выполнять промты последовательно (1-16)",
+                  "gpt_model":  "GPT-5.6 Luna",
+                  "estimated_time":  "8-12 часов работы",
+                  "testing_required":  "Обязательная проверка на localhost:3000 после каждой фазы"
+              }
+}

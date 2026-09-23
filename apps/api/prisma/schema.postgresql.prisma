@@ -1,0 +1,661 @@
+// ============================================================================
+// CRM SYSTEM — DATABASE SCHEMA (Prisma ORM)
+// ============================================================================
+// Version: 1.0
+// Database: PostgreSQL 15+
+// ORM: Prisma 5.x
+// ============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["fullTextSearch", "fullTextIndex"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// ENUMS
+// ============================================================================
+
+enum UserRole {
+  SUPER_ADMIN    // Полный доступ ко всей системе
+  ADMIN          // Администратор организации
+  SALES_MANAGER  // Руководитель отдела продаж
+  SALES_REP      // Менеджер по продажам
+  CLIENT         // Клиент (опционально для клиентского портала)
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  DELETED
+}
+
+enum LeadStatus {
+  NEW           // Новый лид
+  CONTACTED     // Первый контакт установлен
+  QUALIFIED     // Квалифицирован
+  UNQUALIFIED   // Не квалифицирован
+  CONVERTED     // Конвертирован в сделку
+  LOST          // Потерян
+}
+
+enum LeadSource {
+  WEBSITE       // Веб-форма
+  REFERRAL      // Рекомендация
+  COLD_CALL     // Холодный звонок
+  EMAIL         // Email кампания
+  SOCIAL_MEDIA  // Социальные сети
+  ADVERTISING   // Реклама
+  EVENT         // Мероприятие
+  PARTNER       // Партнер
+  OTHER         // Другое
+}
+
+enum DealStatus {
+  OPEN          // Активная сделка
+  WON           // Выиграна
+  LOST          // Проиграна
+  ABANDONED     // Заброшена
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+  CANCELLED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TaskType {
+  CALL          // Звонок
+  EMAIL         // Email
+  MEETING       // Встреча
+  TODO          // Задача
+  FOLLOW_UP     // Следующий шаг
+}
+
+enum ActivityType {
+  CALL
+  EMAIL
+  MEETING
+  NOTE
+  STATUS_CHANGE
+  DEAL_CREATED
+  DEAL_UPDATED
+  DEAL_WON
+  DEAL_LOST
+  FILE_UPLOADED
+}
+
+enum NotificationType {
+  TASK_ASSIGNED
+  TASK_DUE
+  LEAD_ASSIGNED
+  DEAL_STAGE_CHANGED
+  MENTION
+  SYSTEM
+}
+
+// ============================================================================
+// AUTH & USERS
+// ============================================================================
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String   // Bcrypt hashed
+  firstName String
+  lastName  String
+  phone     String?
+  avatar    String?  // URL to avatar image
+  role      UserRole @default(SALES_REP)
+  status    UserStatus @default(ACTIVE)
+  
+  // Metadata
+  lastLoginAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  // Relations
+  ownedLeads        Lead[]        @relation("LeadOwner")
+  ownedDeals        Deal[]        @relation("DealOwner")
+  assignedTasks     Task[]        @relation("TaskAssignee")
+  createdTasks      Task[]        @relation("TaskCreator")
+  activities        Activity[]
+  notifications     Notification[]
+  teamMemberships   TeamMember[]
+  sentEmails        Email[]       @relation("EmailSender")
+  uploadedFiles     File[]        @relation("FileUploader")
+  auditLogs         AuditLog[]
+  
+  // Indexes
+  @@index([email])
+  @@index([role])
+  @@index([status])
+  @@map("users")
+}
+
+model Team {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  members     TeamMember[]
+  
+  @@map("teams")
+}
+
+model TeamMember {
+  id        String   @id @default(cuid())
+  userId    String
+  teamId    String
+  role      String   @default("member") // "leader" | "member"
+  createdAt DateTime @default(now())
+  
+  // Relations
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  
+  // Unique constraint
+  @@unique([userId, teamId])
+  @@index([userId])
+  @@index([teamId])
+  @@map("team_members")
+}
+
+// ============================================================================
+// LEADS
+// ============================================================================
+
+model Lead {
+  id          String     @id @default(cuid())
+  
+  // Lead Information
+  firstName   String
+  lastName    String
+  email       String?
+  phone       String?
+  company     String?
+  jobTitle    String?
+  website     String?
+  
+  // Status & Lifecycle
+  status      LeadStatus @default(NEW)
+  source      LeadSource @default(OTHER)
+  score       Int        @default(0)    // Lead scoring (0-100)
+  
+  // Assignment
+  ownerId     String?
+  owner       User?      @relation("LeadOwner", fields: [ownerId], references: [id])
+  
+  // Conversion
+  convertedToContactId String?   @unique
+  convertedToContact   Contact?  @relation("LeadConversion", fields: [convertedToContactId], references: [id])
+  convertedAt          DateTime?
+  
+  // Additional Data
+  notes       String?    @db.Text
+  metadata    Json?      // Дополнительные кастомные поля
+  
+  // Timestamps
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  
+  // Relations
+  tasks       Task[]
+  activities  Activity[]
+  
+  // Indexes
+  @@index([email])
+  @@index([phone])
+  @@index([status])
+  @@index([ownerId])
+  @@index([source])
+  @@index([createdAt])
+  @@map("leads")
+}
+
+// ============================================================================
+// CONTACTS & COMPANIES
+// ============================================================================
+
+model Company {
+  id          String   @id @default(cuid())
+  
+  // Company Information
+  name        String
+  website     String?
+  industry    String?
+  size        String?  // "1-10", "11-50", "51-200", "201-500", "501+"
+  revenue     Decimal? @db.Decimal(15, 2)
+  
+  // Address
+  street      String?
+  city        String?
+  state       String?
+  country     String?
+  postalCode  String?
+  
+  // Additional
+  phone       String?
+  description String?  @db.Text
+  metadata    Json?
+  
+  // Timestamps
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  contacts    Contact[]
+  deals       Deal[]
+  
+  // Indexes
+  @@index([name])
+  @@map("companies")
+}
+
+model Contact {
+  id          String   @id @default(cuid())
+  
+  // Contact Information
+  firstName   String
+  lastName    String
+  email       String?
+  phone       String?
+  mobile      String?
+  jobTitle    String?
+  
+  // Company relation
+  companyId   String?
+  company     Company? @relation(fields: [companyId], references: [id])
+  
+  // Address
+  street      String?
+  city        String?
+  state       String?
+  country     String?
+  postalCode  String?
+  
+  // Social
+  linkedinUrl String?
+  twitterUrl  String?
+  
+  // Additional
+  notes       String?  @db.Text
+  metadata    Json?
+  
+  // Timestamps
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  leadConverted Lead?    @relation("LeadConversion")
+  deals         DealContact[]
+  tasks         Task[]
+  activities    Activity[]
+  
+  // Indexes
+  @@index([email])
+  @@index([phone])
+  @@index([companyId])
+  @@index([lastName])
+  @@map("contacts")
+}
+
+// ============================================================================
+// DEALS & PIPELINE
+// ============================================================================
+
+model Pipeline {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  isDefault   Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  
+  // Timestamps
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  stages      PipelineStage[]
+  deals       Deal[]
+  
+  @@map("pipelines")
+}
+
+model PipelineStage {
+  id          String   @id @default(cuid())
+  name        String
+  probability Int      @default(0) // Вероятность закрытия сделки (0-100)
+  order       Int      // Порядок этапа в воронке
+  
+  // Pipeline relation
+  pipelineId  String
+  pipeline    Pipeline @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  
+  // Timestamps
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  deals       Deal[]
+  
+  // Indexes
+  @@index([pipelineId])
+  @@index([order])
+  @@map("pipeline_stages")
+}
+
+model Deal {
+  id          String     @id @default(cuid())
+  
+  // Deal Information
+  title       String
+  description String?    @db.Text
+  amount      Decimal    @db.Decimal(15, 2)
+  currency    String     @default("USD")
+  
+  // Status & Stage
+  status      DealStatus @default(OPEN)
+  stageId     String
+  stage       PipelineStage @relation(fields: [stageId], references: [id])
+  
+  // Pipeline
+  pipelineId  String
+  pipeline    Pipeline   @relation(fields: [pipelineId], references: [id])
+  
+  // Assignment
+  ownerId     String
+  owner       User       @relation("DealOwner", fields: [ownerId], references: [id])
+  
+  // Company relation
+  companyId   String?
+  company     Company?   @relation(fields: [companyId], references: [id])
+  
+  // Dates
+  expectedCloseDate DateTime?
+  actualCloseDate   DateTime?
+  
+  // Loss reason (if lost)
+  lossReason  String?    @db.Text
+  
+  // Additional
+  probability Int        @default(0) // Вероятность закрытия (0-100)
+  metadata    Json?
+  
+  // Timestamps
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  
+  // Relations
+  contacts    DealContact[]
+  tasks       Task[]
+  activities  Activity[]
+  files       File[]
+  
+  // Indexes
+  @@index([status])
+  @@index([stageId])
+  @@index([ownerId])
+  @@index([companyId])
+  @@index([expectedCloseDate])
+  @@index([createdAt])
+  @@map("deals")
+}
+
+// Many-to-Many relation between Deal and Contact
+model DealContact {
+  id        String   @id @default(cuid())
+  dealId    String
+  contactId String
+  role      String?  // "decision_maker", "influencer", "user", etc.
+  isPrimary Boolean  @default(false)
+  createdAt DateTime @default(now())
+  
+  // Relations
+  deal      Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  contact   Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  
+  @@unique([dealId, contactId])
+  @@index([dealId])
+  @@index([contactId])
+  @@map("deal_contacts")
+}
+
+// ============================================================================
+// TASKS & ACTIVITIES
+// ============================================================================
+
+model Task {
+  id          String       @id @default(cuid())
+  
+  // Task Information
+  title       String
+  description String?      @db.Text
+  type        TaskType     @default(TODO)
+  status      TaskStatus   @default(TODO)
+  priority    TaskPriority @default(MEDIUM)
+  
+  // Assignment
+  assigneeId  String?
+  assignee    User?        @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  
+  createdById String
+  createdBy   User         @relation("TaskCreator", fields: [createdById], references: [id])
+  
+  // Relations
+  leadId      String?
+  lead        Lead?        @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  
+  dealId      String?
+  deal        Deal?        @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  
+  contactId   String?
+  contact     Contact?     @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  
+  // Dates
+  dueDate     DateTime?
+  completedAt DateTime?
+  
+  // Timestamps
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  
+  // Indexes
+  @@index([assigneeId])
+  @@index([status])
+  @@index([priority])
+  @@index([dueDate])
+  @@index([leadId])
+  @@index([dealId])
+  @@index([contactId])
+  @@map("tasks")
+}
+
+model Activity {
+  id          String       @id @default(cuid())
+  
+  // Activity Information
+  type        ActivityType
+  title       String
+  description String?      @db.Text
+  metadata    Json?        // Дополнительные данные (email subject, call duration, etc.)
+  
+  // User who performed the activity
+  userId      String
+  user        User         @relation(fields: [userId], references: [id])
+  
+  // Relations (polymorphic)
+  leadId      String?
+  lead        Lead?        @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  
+  dealId      String?
+  deal        Deal?        @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  
+  contactId   String?
+  contact     Contact?     @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  
+  // Timestamps
+  createdAt   DateTime     @default(now())
+  
+  // Indexes
+  @@index([userId])
+  @@index([type])
+  @@index([leadId])
+  @@index([dealId])
+  @@index([contactId])
+  @@index([createdAt])
+  @@map("activities")
+}
+
+// ============================================================================
+// FILES & DOCUMENTS
+// ============================================================================
+
+model File {
+  id          String   @id @default(cuid())
+  
+  // File Information
+  filename    String
+  originalName String
+  mimeType    String
+  size        Int      // Size in bytes
+  url         String   // S3 URL or local path
+  
+  // Relations
+  dealId      String?
+  deal        Deal?    @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  
+  // Uploader
+  uploadedById String
+  uploadedBy   User    @relation("FileUploader", fields: [uploadedById], references: [id])
+  
+  // Timestamps
+  createdAt   DateTime @default(now())
+  
+  // Indexes
+  @@index([dealId])
+  @@map("files")
+}
+
+// ============================================================================
+// NOTIFICATIONS
+// ============================================================================
+
+model Notification {
+  id          String           @id @default(cuid())
+  
+  // Notification Information
+  type        NotificationType
+  title       String
+  message     String           @db.Text
+  isRead      Boolean          @default(false)
+  
+  // Recipient
+  userId      String
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Link (optional)
+  linkUrl     String?
+  
+  // Metadata
+  metadata    Json?
+  
+  // Timestamps
+  createdAt   DateTime         @default(now())
+  readAt      DateTime?
+  
+  // Indexes
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+// ============================================================================
+// EMAIL TRACKING
+// ============================================================================
+
+model Email {
+  id          String   @id @default(cuid())
+  
+  // Email Information
+  subject     String
+  body        String   @db.Text
+  fromEmail   String
+  toEmail     String
+  ccEmails    String[] // Array of CC emails
+  bccEmails   String[] // Array of BCC emails
+  
+  // Status
+  status      String   @default("sent") // "sent", "delivered", "opened", "bounced"
+  
+  // Tracking
+  openedAt    DateTime?
+  clickedAt   DateTime?
+  
+  // Sender (User)
+  senderId    String
+  sender      User     @relation("EmailSender", fields: [senderId], references: [id])
+  
+  // Metadata
+  metadata    Json?
+  
+  // Timestamps
+  sentAt      DateTime @default(now())
+  
+  // Indexes
+  @@index([senderId])
+  @@index([status])
+  @@map("emails")
+}
+
+// ============================================================================
+// AUDIT LOGS
+// ============================================================================
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  action      String   // "CREATE", "UPDATE", "DELETE", "LOGIN", "LOGOUT"
+  resource    String   // "lead", "deal", "contact", etc.
+  resourceId  String?
+  changes     Json?    // Before/after values
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([resource])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ============================================================================
+// SYSTEM SETTINGS
+// ============================================================================
+
+model Setting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     Json
+  updatedAt DateTime @updatedAt
+  
+  @@map("settings")
+}

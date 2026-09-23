@@ -1,0 +1,467 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  SUPERVISOR
+}
+
+enum VehicleCountry {
+  JAPAN
+  KOREA
+  CHINA
+}
+
+enum VehicleStatus {
+  AVAILABLE
+  RESERVED
+  IN_VERIFICATION
+  VERIFIED
+  PURCHASED
+  IN_TRANSIT
+  ARRIVED_VLADIVOSTOK
+  CUSTOMS_CLEARANCE
+  DELIVERY_RUSSIA
+  DELIVERED
+  SOLD
+  UNAVAILABLE
+}
+
+enum CurrencyCode {
+  JPY
+  KRW
+  CNY
+}
+
+enum Transmission {
+  MANUAL
+  AUTOMATIC
+  CVT
+  ROBOT
+}
+
+enum Drivetrain {
+  FWD
+  RWD
+  AWD
+  FOUR_WD
+}
+
+enum FuelType {
+  PETROL
+  DIESEL
+  HYBRID
+  ELECTRIC
+  GAS
+}
+
+enum InspectionCondition {
+  EXCELLENT
+  GOOD
+  FAIR
+  POOR
+  UNKNOWN
+}
+
+enum InspectionRecommendation {
+  APPROVED
+  APPROVED_WITH_NOTES
+  NOT_RECOMMENDED
+}
+
+enum OrderStatus {
+  NEW
+  IN_PROGRESS
+  VEHICLE_FOUND
+  INSPECTION_SCHEDULED
+  INSPECTION_COMPLETED
+  REPORT_PROVIDED
+  AWAITING_CLIENT_APPROVAL
+  APPROVED
+  VEHICLE_PURCHASED
+  PREPARATION_FOR_SHIPPING
+  IN_TRANSIT
+  ARRIVED_VLADIVOSTOK
+  CUSTOMS_CLEARANCE
+  DELIVERY_RUSSIA
+  READY_FOR_PICKUP
+  DELIVERED
+  COMPLETED
+  CANCELLED
+}
+
+enum MediaType {
+  PHOTO
+  VIDEO
+  DOCUMENT
+}
+
+enum TimelineEventType {
+  STATUS_CHANGE
+  DOCUMENT_ADDED
+  NOTE_ADDED
+  PHOTO_ADDED
+}
+
+enum LeadType {
+  VEHICLE_REQUEST
+  VEHICLE_CALCULATION
+}
+
+model User {
+  id                   String               @id @default(uuid()) @db.Uuid
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  email                String               @unique
+  passwordHash         String
+  name                 String
+  role                 UserRole             @default(MANAGER)
+  isActive             Boolean              @default(true)
+  lastLoginAt          DateTime?
+  vehiclesCreated      Vehicle[]            @relation("VehicleCreatedBy")
+  vehiclesUpdated      Vehicle[]            @relation("VehicleUpdatedBy")
+  inspections          VehicleInspection[]
+  timelineEvents       OrderTimeline[]
+  reviewsModerated     Review[]             @relation("ReviewModeratedBy")
+  casesCreated         Case[]
+  mediaUploaded        Media[]
+  pagesCreated         Page[]
+  settingsChanges      Settings[]
+  auditLogs            AuditLog[]
+  orderStatusHistories OrderStatusHistory[]
+}
+
+model Vehicle {
+  id                   String             @id @default(uuid()) @db.Uuid
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  createdById          String             @db.Uuid
+  updatedById          String             @db.Uuid
+  make                 String
+  model                String
+  generation           String?
+  year                 Int
+  country              VehicleCountry
+  mileage              Int
+  engine               String
+  engineVolume         Int?
+  power                Int
+  transmission         Transmission
+  drivetrain           Drivetrain
+  fuel                 FuelType
+  bodyType             String
+  color                String?
+  vin                  String?
+  trim                 String?
+  features             Json?
+  vehiclePrice         Decimal            @db.Decimal(14, 2)
+  vehiclePriceCurrency CurrencyCode
+  shippingCost         Decimal?           @db.Decimal(14, 2)
+  customsCost          Decimal?           @db.Decimal(14, 2)
+  utilisationFee       Decimal?           @db.Decimal(14, 2)
+  brokerageCost        Decimal?           @db.Decimal(14, 2)
+  otherCosts           Decimal?           @db.Decimal(14, 2)
+  commission           Decimal            @db.Decimal(14, 2)
+  totalCost            Decimal            @db.Decimal(14, 2)
+  showPricePublic      Boolean            @default(false)
+  publicPrice          Decimal?           @db.Decimal(14, 2)
+  status               VehicleStatus      @default(AVAILABLE)
+  description          String?
+  internalNotes        String?
+  isPublished          Boolean            @default(false)
+  isFeatured           Boolean            @default(false)
+  viewCount            Int                @default(0)
+  slug                 String             @unique
+  metaTitle            String?
+  metaDescription      String?
+  createdBy            User               @relation("VehicleCreatedBy", fields: [createdById], references: [id])
+  updatedBy            User               @relation("VehicleUpdatedBy", fields: [updatedById], references: [id])
+  inspection           VehicleInspection?
+  media                Media[]
+  orders               Order[]
+  leads                Lead[]
+
+  @@index([make, model, year])
+  @@index([status, isPublished])
+  @@index([country])
+}
+
+model VehicleInspection {
+  id                    String                   @id @default(uuid()) @db.Uuid
+  vehicleId             String                   @unique @db.Uuid
+  createdAt             DateTime                 @default(now())
+  updatedAt             DateTime                 @updatedAt
+  inspectedById         String                   @db.Uuid
+  inspectionDate        DateTime
+  bodyCondition         InspectionCondition      @default(UNKNOWN)
+  bodyNotes             String?
+  engineCondition       InspectionCondition      @default(UNKNOWN)
+  engineNotes           String?
+  transmissionCondition InspectionCondition      @default(UNKNOWN)
+  transmissionNotes     String?
+  suspensionCondition   InspectionCondition      @default(UNKNOWN)
+  suspensionNotes       String?
+  electronicsCondition  InspectionCondition      @default(UNKNOWN)
+  electronicsNotes      String?
+  mileageVerified       Boolean                  @default(false)
+  actualMileage         Int?
+  historyData           Json?
+  auctionSheetData      Json?
+  documentsVerified     Boolean                  @default(false)
+  legalCheckVerified    Boolean                  @default(false)
+  legalCheckNotes       String?
+  overallCondition      InspectionCondition      @default(UNKNOWN)
+  recommendation        InspectionRecommendation @default(APPROVED_WITH_NOTES)
+  specialistComment     String
+  fullReportUrl         String?
+  isPublic              Boolean                  @default(false)
+  vehicle               Vehicle                  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  inspectedBy           User                     @relation(fields: [inspectedById], references: [id])
+  media                 Media[]
+}
+
+model Client {
+  id              String    @id @default(uuid()) @db.Uuid
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  name            String
+  phone           String?
+  email           String?
+  telegram        String?
+  deliveryCity    String?
+  deliveryRegion  String?
+  deliveryAddress String?
+  postalCode      String?
+  source          String?
+  notes           String?
+  consentGiven    Boolean   @default(false)
+  consentDate     DateTime?
+  consentVersion  String?
+  orders          Order[]
+  reviews         Review[]
+
+  @@index([phone])
+  @@index([email])
+}
+
+model Order {
+  id              String               @id @default(uuid()) @db.Uuid
+  orderNumber     String               @unique
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  clientId        String               @db.Uuid
+  vehicleId       String?              @db.Uuid
+  vehicleRequest  Json?
+  status          OrderStatus          @default(NEW)
+  trackingToken   String               @unique @default(uuid()) @db.Uuid
+  trackingEnabled Boolean              @default(true)
+  pricingPublic   Boolean              @default(false)
+  managerNotes    String?
+  clientNotes     String?
+  source          String?
+  vehiclePrice    Decimal?             @db.Decimal(14, 2)
+  currency        CurrencyCode?
+  currencyRate    Decimal?             @db.Decimal(14, 6)
+  shippingCost    Decimal?             @db.Decimal(14, 2)
+  customsCost     Decimal?             @db.Decimal(14, 2)
+  utilisationFee  Decimal?             @db.Decimal(14, 2)
+  brokerageCost   Decimal?             @db.Decimal(14, 2)
+  otherCosts      Decimal?             @db.Decimal(14, 2)
+  commission      Decimal?             @db.Decimal(14, 2)
+  totalCost       Decimal?             @db.Decimal(14, 2)
+  client          Client               @relation(fields: [clientId], references: [id])
+  vehicle         Vehicle?             @relation(fields: [vehicleId], references: [id])
+  statusHistory   OrderStatusHistory[]
+  timeline        OrderTimeline[]
+  media           Media[]
+  reviews         Review[]
+  cases           Case[]
+
+  @@index([clientId])
+  @@index([vehicleId])
+  @@index([status, createdAt])
+}
+
+model OrderStatusHistory {
+  id          String      @id @default(uuid()) @db.Uuid
+  orderId     String      @db.Uuid
+  status      OrderStatus
+  changedAt   DateTime    @default(now())
+  changedById String      @db.Uuid
+  comment     String?
+  order       Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  changedBy   User        @relation(fields: [changedById], references: [id])
+}
+
+model OrderTimeline {
+  id          String            @id @default(uuid()) @db.Uuid
+  orderId     String            @db.Uuid
+  createdAt   DateTime          @default(now())
+  createdById String            @db.Uuid
+  type        TimelineEventType
+  title       String
+  description String?
+  isPublic    Boolean           @default(false)
+  order       Order             @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  createdBy   User              @relation(fields: [createdById], references: [id])
+  media       Media[]
+}
+
+model Review {
+  id            String    @id @default(uuid()) @db.Uuid
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  clientId      String?   @db.Uuid
+  orderId       String?   @db.Uuid
+  clientName    String
+  clientCity    String?
+  vehicleName   String?
+  rating        Int
+  text          String
+  isPublished   Boolean   @default(false)
+  publishedAt   DateTime?
+  isFeatured    Boolean   @default(false)
+  moderatedById String?   @db.Uuid
+  moderatedAt   DateTime?
+  client        Client?   @relation(fields: [clientId], references: [id])
+  order         Order?    @relation(fields: [orderId], references: [id])
+  moderatedBy   User?     @relation("ReviewModeratedBy", fields: [moderatedById], references: [id])
+  media         Media[]
+
+  @@index([isPublished, isFeatured])
+}
+
+model Case {
+  id                String    @id @default(uuid()) @db.Uuid
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  createdById       String    @db.Uuid
+  orderId           String?   @db.Uuid
+  clientLabel       String
+  challenge         String
+  budget            Decimal?  @db.Decimal(14, 2)
+  vehicleName       String
+  vehicleSpecs      String?
+  inspectionSummary String?
+  finalCost         Decimal?  @db.Decimal(14, 2)
+  deliveryTime      String?
+  logisticsSummary  String?
+  result            String
+  clientReview      String?
+  isPublished       Boolean   @default(false)
+  publishedAt       DateTime?
+  isFeatured        Boolean   @default(false)
+  slug              String    @unique
+  metaTitle         String?
+  metaDescription   String?
+  createdBy         User      @relation(fields: [createdById], references: [id])
+  order             Order?    @relation(fields: [orderId], references: [id])
+  media             Media[]
+}
+
+model Media {
+  id           String             @id @default(uuid()) @db.Uuid
+  createdAt    DateTime           @default(now())
+  uploadedById String             @db.Uuid
+  fileName     String
+  fileSize     Int
+  mimeType     String
+  url          String
+  thumbnailUrl String?
+  type         MediaType
+  title        String?
+  description  String?
+  alt          String?
+  sortOrder    Int                @default(0)
+  isPublic     Boolean            @default(false)
+  vehicleId    String?            @db.Uuid
+  inspectionId String?            @db.Uuid
+  orderId      String?            @db.Uuid
+  timelineId   String?            @db.Uuid
+  reviewId     String?            @db.Uuid
+  caseId       String?            @db.Uuid
+  pageId       String?            @db.Uuid
+  uploadedBy   User               @relation(fields: [uploadedById], references: [id])
+  vehicle      Vehicle?           @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  inspection   VehicleInspection? @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+  order        Order?             @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  timeline     OrderTimeline?     @relation(fields: [timelineId], references: [id], onDelete: Cascade)
+  review       Review?            @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  case         Case?              @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  page         Page?              @relation(fields: [pageId], references: [id], onDelete: Cascade)
+}
+
+model Page {
+  id              String    @id @default(uuid()) @db.Uuid
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  createdById     String    @db.Uuid
+  title           String
+  slug            String    @unique
+  content         String
+  isPublished     Boolean   @default(false)
+  publishedAt     DateTime?
+  metaTitle       String?
+  metaDescription String?
+  showInMenu      Boolean   @default(false)
+  menuOrder       Int?
+  createdBy       User      @relation(fields: [createdById], references: [id])
+  media           Media[]
+}
+
+model Settings {
+  id                String   @id @default(uuid()) @db.Uuid
+  updatedAt         DateTime @updatedAt
+  updatedById       String   @db.Uuid
+  defaultCommission Decimal  @default(50000) @db.Decimal(14, 2)
+  jpyRate           Decimal  @db.Decimal(14, 6)
+  krwRate           Decimal  @db.Decimal(14, 6)
+  cnyRate           Decimal  @db.Decimal(14, 6)
+  companyPhone      String?
+  companyEmail      String?
+  companyTelegram   String?
+  companyAddress    String
+  workingHours      String?
+  siteTitle         String
+  siteDescription   String
+  updatedBy         User     @relation(fields: [updatedById], references: [id])
+}
+
+model AuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  createdAt  DateTime @default(now())
+  userId     String?  @db.Uuid
+  action     String
+  entityType String
+  entityId   String?
+  ipAddress  String?
+  metadata   Json?
+  user       User?    @relation(fields: [userId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([userId, createdAt])
+}
+
+model Lead {
+  id             String    @id @default(uuid()) @db.Uuid
+  createdAt      DateTime  @default(now())
+  type           LeadType
+  vehicleId      String?   @db.Uuid
+  vehicleRequest Json?
+  name           String
+  phone          String?
+  email          String?
+  telegram       String?
+  comment        String?
+  consentGiven   Boolean   @default(false)
+  consentDate    DateTime?
+  source         String?
+  vehicle        Vehicle?  @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+}

@@ -1,0 +1,40 @@
+[
+  {
+    "id": "a265b6d6-b338-4c7c-8a9b-9fe07566ca13",
+    "type": "VEHICLE_REQUEST",
+    "name": "Иван Иванов",
+    "phone": "+79161234567",
+    "email": "ivan@example.com",
+    "comment": "Тест fallback",
+    "source": "website",
+    "savedAt": "2026-09-19T05:34:19.062Z"
+  },
+  {
+    "id": "cfb0161e-ffa4-42f1-9e61-5d3e3836b36b",
+    "type": "VEHICLE_REQUEST",
+    "name": "Виталий",
+    "phone": "+79505926759",
+    "comment": "njtnf",
+    "source": "website",
+    "savedAt": "2026-09-19T05:37:42.178Z"
+  },
+  {
+    "id": "fda72827-d9a5-4cb7-b6d0-c441c6f7d4dc",
+    "type": "VEHICLE_REQUEST",
+    "name": "Виталий",
+    "phone": "+79505926759",
+    "comment": "TanK 300",
+    "source": "website",
+    "savedAt": "2026-09-19T05:41:25.683Z"
+  },
+  {
+    "id": "d92b29ad-6723-4a20-931f-c00d8dbed74c",
+    "type": "VEHICLE_REQUEST",
+    "name": "Финальный тест",
+    "phone": "+79161234567",
+    "email": "final@test.com",
+    "comment": "Проверка перед продакшеном",
+    "source": "website",
+    "savedAt": "2026-09-19T05:49:41.532Z"
+  }
+]
