@@ -1,6 +1,5 @@
 ﻿import Link from "next/link";
 import { externalReviews, faqItems, officeHours, reviews, socialLinks, workSteps } from "@/lib/mock-data";
-import { Hero } from "@/components/features/hero";
 import { LeadForm } from "@/components/features/lead-form";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
